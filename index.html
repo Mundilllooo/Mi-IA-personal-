@@ -1,0 +1,2177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tu IA — v0.4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface-2: #1f1f1f;
+    --surface-3: #252525;
+    --border: #2a2a2a;
+    --text: #f5f1e8;
+    --text-muted: #8c877e;
+    --accent: #c9a961;
+    --accent-hover: #e8c886;
+    --accent-soft: rgba(201, 169, 97, 0.12);
+    --user-bubble: #1f1f1f;
+    --error: #d97070;
+    --display: 'Cormorant Garamond', Georgia, serif;
+    --body: 'Inter', -apple-system, system-ui, sans-serif;
+    --sidebar-width: 280px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body { display: flex; overflow: hidden; }
+
+  ::selection { background: var(--accent-soft); color: var(--accent-hover); }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar {
+    width: var(--sidebar-width);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .new-chat-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-family: var(--body);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .new-chat-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .conversations {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .conversations::-webkit-scrollbar { width: 6px; }
+  .conversations::-webkit-scrollbar-track { background: transparent; }
+  .conversations::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .conv-group-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 12px 10px 6px;
+  }
+
+  .conv-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 14px;
+    transition: all 0.15s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .conv-item:hover { background: var(--surface-2); color: var(--text); }
+  .conv-item.active { background: var(--accent-soft); color: var(--text); }
+  .conv-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .conv-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .conv-delete {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: all 0.15s ease;
+    display: flex;
+  }
+
+  .conv-item:hover .conv-delete { opacity: 1; }
+  .conv-delete:hover { color: var(--error); background: var(--surface-3); }
+
+  .sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sidebar-footer-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .sidebar-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 9px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: var(--body);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .sidebar-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .sidebar-btn-primary {
+    width: 100%;
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .sidebar-btn-primary:hover {
+    background: rgba(201, 169, 97, 0.18);
+  }
+
+  /* ============ MAIN ============ */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(13, 13, 13, 0.95);
+    backdrop-filter: blur(8px);
+    flex-shrink: 0;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    padding: 6px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--display);
+    color: var(--accent);
+    font-size: 16px;
+  }
+
+  .logo-text {
+    font-family: var(--display);
+    font-size: 19px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+  }
+
+  .logo-version {
+    color: var(--text-muted);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .model-selector {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-family: var(--body);
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .model-selector:hover { border-color: var(--accent); }
+
+  /* ============ CHAT ============ */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 36px 24px;
+    scroll-behavior: smooth;
+  }
+
+  .chat-area::-webkit-scrollbar { width: 8px; }
+  .chat-area::-webkit-scrollbar-track { background: transparent; }
+  .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .chat-area::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+  .messages {
+    max-width: 780px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  /* Welcome */
+  .welcome {
+    text-align: center;
+    padding: 60px 20px 40px;
+    animation: fadeIn 0.7s ease;
+  }
+
+  .welcome-mark {
+    width: 64px;
+    height: 64px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    margin: 0 auto 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--display);
+    color: var(--accent);
+    font-size: 32px;
+  }
+
+  .welcome h1 {
+    font-family: var(--display);
+    font-size: 40px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+  }
+
+  .welcome p {
+    color: var(--text-muted);
+    font-size: 15px;
+    max-width: 480px;
+    margin: 0 auto 36px;
+  }
+
+  .suggestions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .suggestion {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 14px;
+  }
+
+  .suggestion:hover {
+    border-color: var(--accent);
+    background: var(--surface-2);
+    transform: translateY(-1px);
+  }
+
+  .suggestion-label {
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  /* Messages */
+  .message {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    animation: slideUp 0.3s ease;
+    position: relative;
+  }
+
+  .message.user { align-items: flex-end; }
+  .message.assistant { align-items: flex-start; }
+
+  .message-role {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .message.assistant .message-role { color: var(--accent); }
+
+  .bubble {
+    padding: 14px 18px;
+    border-radius: 14px;
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  .message.user .bubble {
+    background: var(--user-bubble);
+    border: 1px solid var(--border);
+    max-width: 80%;
+    white-space: pre-wrap;
+  }
+
+  .message.assistant .bubble {
+    background: transparent;
+    padding: 0;
+    color: var(--text);
+    line-height: 1.7;
+    white-space: normal;
+    width: 100%;
+  }
+
+  .message.assistant .bubble p { margin-bottom: 12px; }
+  .message.assistant .bubble p:last-child { margin-bottom: 0; }
+  .message.assistant .bubble code {
+    background: var(--surface-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: var(--accent);
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+  }
+  .message.assistant .bubble pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 10px 0;
+  }
+  .message.assistant .bubble pre code {
+    background: none;
+    padding: 0;
+    color: var(--text);
+  }
+  .message.assistant .bubble h1,
+  .message.assistant .bubble h2,
+  .message.assistant .bubble h3 {
+    font-family: var(--display);
+    font-weight: 500;
+    margin: 18px 0 8px;
+    color: var(--text);
+  }
+  .message.assistant .bubble h1 { font-size: 26px; }
+  .message.assistant .bubble h2 { font-size: 22px; }
+  .message.assistant .bubble h3 { font-size: 18px; color: var(--accent); }
+  .message.assistant .bubble ul,
+  .message.assistant .bubble ol {
+    margin: 8px 0 12px;
+    padding-left: 24px;
+  }
+  .message.assistant .bubble li { margin-bottom: 4px; }
+  .message.assistant .bubble ul li::marker,
+  .message.assistant .bubble ol li::marker { color: var(--accent); }
+  .message.assistant .bubble hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 18px 0;
+  }
+  .message.assistant .bubble blockquote {
+    border-left: 2px solid var(--accent);
+    padding: 4px 14px;
+    margin: 10px 0;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  .message.assistant .bubble table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .message.assistant .bubble th,
+  .message.assistant .bubble td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .message.assistant .bubble th {
+    background: var(--surface-2);
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .message.assistant .bubble a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(201, 169, 97, 0.3);
+  }
+  .message.assistant .bubble a:hover { border-bottom-color: var(--accent); }
+  .message.assistant .bubble strong { color: var(--text); font-weight: 600; }
+
+  .message-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .message:hover .message-actions { opacity: 1; }
+
+  .msg-action-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--body);
+    transition: all 0.15s ease;
+  }
+
+  .msg-action-btn:hover {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .msg-action-btn.copied { color: var(--accent); }
+
+  /* Typing */
+  .typing { display: flex; gap: 6px; padding: 4px 0; }
+  .dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: blink 1.4s infinite;
+    opacity: 0.4;
+  }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  /* Error */
+  .error-msg {
+    background: rgba(217, 112, 112, 0.1);
+    border: 1px solid var(--error);
+    color: var(--error);
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Input */
+  .input-area {
+    padding: 14px 24px 22px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+
+  .input-wrapper {
+    max-width: 780px;
+    margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex;
+    align-items: flex-end;
+    transition: border-color 0.2s ease;
+  }
+
+  .input-wrapper:focus-within { border-color: var(--accent); }
+
+  .input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    padding: 16px 18px;
+    resize: none;
+    max-height: 200px;
+    min-height: 24px;
+    line-height: 1.5;
+  }
+
+  .input::placeholder { color: var(--text-muted); }
+
+  .send-btn {
+    background: var(--accent);
+    border: none;
+    color: var(--bg);
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    margin: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .send-btn:hover:not(:disabled) { background: var(--accent-hover); }
+  .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .input-hint {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 11px;
+    margin-top: 10px;
+    letter-spacing: 0.3px;
+  }
+
+  .input-hint kbd {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 10px;
+    margin: 0 2px;
+  }
+
+  /* Modal */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .modal-bg.active { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 520px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+  }
+
+  .modal h2 {
+    font-family: var(--display);
+    font-size: 26px;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .modal-desc {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 22px;
+  }
+
+  .field { margin-bottom: 18px; }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+
+  .field input, .field textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-family: var(--body);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .field input:focus, .field textarea:focus { border-color: var(--accent); }
+
+  .field textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 22px;
+  }
+
+  .btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: var(--body);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--text-muted); }
+
+  .privacy-note {
+    background: var(--accent-soft);
+    border: 1px solid rgba(201, 169, 97, 0.3);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  .privacy-note strong { color: var(--accent); }
+
+  .shortcuts-list {
+    display: grid;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .shortcut-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .shortcut-row span { color: var(--text-muted); }
+  .shortcut-keys { display: flex; gap: 4px; }
+  .shortcut-keys kbd {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--text);
+  }
+
+  /* Memorias */
+  .memory-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+    padding-right: 4px;
+  }
+
+  .memory-list::-webkit-scrollbar { width: 6px; }
+  .memory-list::-webkit-scrollbar-track { background: transparent; }
+  .memory-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .memory-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    transition: border-color 0.2s ease;
+  }
+
+  .memory-item:hover { border-color: var(--accent); }
+
+  .memory-icon {
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .memory-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .memory-text {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.5;
+    word-wrap: break-word;
+  }
+
+  .memory-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  .memory-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .memory-item:hover .memory-actions { opacity: 1; }
+
+  .memory-action-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+  }
+
+  .memory-action-btn:hover { color: var(--accent); background: var(--surface-2); }
+  .memory-action-btn.delete:hover { color: var(--error); }
+
+  .memory-empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  .memory-add {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .memory-add input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: var(--body);
+    font-size: 14px;
+    outline: none;
+  }
+
+  .memory-add input:focus { border-color: var(--accent); }
+
+  .memory-add button {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 0 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: var(--body);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .memory-add button:hover { background: var(--accent-hover); }
+
+  .memory-stats {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    z-index: 200;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes blink {
+    0%, 60%, 100% { opacity: 0.4; transform: scale(1); }
+    30% { opacity: 1; transform: scale(1.2); }
+  }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    .sidebar {
+      position: fixed;
+      top: 0; bottom: 0; left: 0;
+      z-index: 50;
+      transform: translateX(-100%);
+      box-shadow: 2px 0 20px rgba(0, 0, 0, 0.5);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 40;
+      display: none;
+    }
+    .sidebar-overlay.show { display: block; }
+    .menu-toggle { display: flex; }
+    .header { padding: 12px 16px; }
+    .logo-version { display: none; }
+    .chat-area { padding: 24px 14px; }
+    .welcome { padding: 40px 16px; }
+    .welcome h1 { font-size: 32px; }
+    .input-area { padding: 12px 14px 18px; }
+    .modal { padding: 22px; }
+    .input-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <button class="new-chat-btn" id="newChatBtn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Nueva conversación
+    </button>
+  </div>
+  <div class="conversations" id="conversations"></div>
+  <div class="sidebar-footer">
+    <button class="sidebar-btn sidebar-btn-primary" id="memoryBtn" title="Memorias (⌘M)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1M5.6 5.6l.7.7M3 12h1M19.4 5.6l-.7.7M21 12h-1M12 7a5 5 0 0 0-3 9c.5.5 1 1 1 2v1h4v-1c0-1 .5-1.5 1-2a5 5 0 0 0-3-9z"/></svg>
+      Memorias
+    </button>
+    <div class="sidebar-footer-row">
+      <button class="sidebar-btn" id="shortcutsBtn" title="Atajos de teclado">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></svg>
+        Atajos
+      </button>
+      <button class="sidebar-btn" id="settingsBtn" title="Configuración">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Ajustes
+      </button>
+    </div>
+  </div>
+</aside>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="header">
+    <div class="header-left">
+      <button class="menu-toggle" id="menuToggle">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div class="logo">
+        <div class="logo-mark">N</div>
+        <div>
+          <div class="logo-text">Tu IA</div>
+          <div class="logo-version">PROTOTIPO V0.4</div>
+        </div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <select class="model-selector" id="modelSelector">
+        <optgroup label="Claude (Anthropic)">
+          <option value="claude-sonnet-4-6">Sonnet 4.6 — equilibrado</option>
+          <option value="claude-opus-4-6">Opus 4.6 — máxima inteligencia</option>
+          <option value="claude-haiku-4-5-20251001">Haiku 4.5 — rápido</option>
+        </optgroup>
+        <optgroup label="GPT (OpenAI)">
+          <option value="gpt-4o">GPT-4o — equilibrado</option>
+          <option value="gpt-4o-mini">GPT-4o mini — rápido</option>
+          <option value="gpt-4-turbo">GPT-4 Turbo — clásico</option>
+        </optgroup>
+      </select>
+      <button class="icon-btn" id="exportBtn" title="Exportar conversación">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="chat-area" id="chatArea">
+    <div class="messages" id="messages"></div>
+  </main>
+
+  <div class="input-area">
+    <div class="input-wrapper">
+      <textarea class="input" id="input" placeholder="Escribe tu mensaje..." rows="1"></textarea>
+      <button class="send-btn" id="sendBtn" title="Enviar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l14-7-7 14-2-5-5-2z"/></svg>
+      </button>
+    </div>
+    <div class="input-hint">
+      <kbd>Enter</kbd> enviar · <kbd>Shift</kbd>+<kbd>Enter</kbd> nueva línea · <kbd>⌘K</kbd> nueva conversación
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h2>Configuración</h2>
+    <p class="modal-desc">Conecta tu llave API y personaliza tu IA.</p>
+
+    <div class="privacy-note">
+      <strong>Privacidad:</strong> Tus llaves se guardan solo en este navegador y se envían únicamente al proveedor correspondiente (Anthropic o OpenAI) cuando hablas con la IA. Nada se sube a otro servidor.
+    </div>
+
+    <div class="field">
+      <label for="apiKey">Llave API de Anthropic (Claude)</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-..." />
+    </div>
+
+    <div class="field">
+      <label for="openaiKey">Llave API de OpenAI (GPT) — opcional</label>
+      <input type="password" id="openaiKey" placeholder="sk-..." />
+    </div>
+
+    <div class="field">
+      <label for="userName">Cómo te llamas</label>
+      <input type="text" id="userName" placeholder="Mundo" />
+    </div>
+
+    <div class="field">
+      <label for="systemPrompt">
+        Personalidad (system prompt)
+        <button type="button" id="resetPromptBtn" style="float:right;background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;text-transform:uppercase;letter-spacing:1px;font-family:var(--body);">↺ Restaurar default</button>
+      </label>
+      <textarea id="systemPrompt"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cancelSettings">Cancelar</button>
+      <button class="btn btn-primary" id="saveSettings">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHORTCUTS MODAL -->
+<div class="modal-bg" id="shortcutsModal">
+  <div class="modal">
+    <h2>Atajos de teclado</h2>
+    <p class="modal-desc">Para que vueles por la app.</p>
+    <div class="shortcuts-list">
+      <div class="shortcut-row">
+        <span>Nueva conversación</span>
+        <div class="shortcut-keys"><kbd>⌘</kbd><kbd>K</kbd></div>
+      </div>
+      <div class="shortcut-row">
+        <span>Enfocar input</span>
+        <div class="shortcut-keys"><kbd>⌘</kbd><kbd>/</kbd></div>
+      </div>
+      <div class="shortcut-row">
+        <span>Configuración</span>
+        <div class="shortcut-keys"><kbd>⌘</kbd><kbd>,</kbd></div>
+      </div>
+      <div class="shortcut-row">
+        <span>Memorias</span>
+        <div class="shortcut-keys"><kbd>⌘</kbd><kbd>M</kbd></div>
+      </div>
+      <div class="shortcut-row">
+        <span>Cerrar ventana</span>
+        <div class="shortcut-keys"><kbd>Esc</kbd></div>
+      </div>
+      <div class="shortcut-row">
+        <span>Enviar mensaje</span>
+        <div class="shortcut-keys"><kbd>Enter</kbd></div>
+      </div>
+      <div class="shortcut-row">
+        <span>Nueva línea en input</span>
+        <div class="shortcut-keys"><kbd>Shift</kbd><kbd>Enter</kbd></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="closeShortcuts">Listo</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEMORIES MODAL -->
+<div class="modal-bg" id="memoryModal">
+  <div class="modal" style="max-width: 580px;">
+    <h2>Memorias</h2>
+    <p class="modal-desc">Lo que tu IA sabe sobre ti. Aprende automáticamente y puedes editar manualmente.</p>
+
+    <div class="memory-add">
+      <input type="text" id="newMemoryInput" placeholder="Agrega algo que quieras que recuerde..." />
+      <button id="addMemoryBtn">+ Agregar</button>
+    </div>
+
+    <div class="memory-list" id="memoryList"></div>
+
+    <div class="memory-stats" id="memoryStats"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="clearMemoryBtn">Borrar todas</button>
+      <button class="btn btn-primary" id="closeMemoryBtn">Listo</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIGURACIÓN
+// ============================================================
+
+const DEFAULT_SYSTEM_PROMPT = `Eres un asistente personal de IA elegante y premium. Tu esencia: ayudar al usuario con lo más simple o lo más complejo, con la misma gracia.
+
+PERSONALIDAD — Camaleón Adaptable con base elegante:
+- Pregunta simple → directa, cálida, sin formalismos. Ej: clima → "16°, despejado. Buen día para salir."
+- Tarea profesional/técnica → estructurado, riguroso, profundo
+- Conversación creativa → lúdico, imaginativo, abierto
+- Conversación personal → empático, atento, sin saltarse a soluciones
+
+VALORES NÚCLEO (siempre):
+- Honestidad: nunca inventes. Si no sabes, dilo. Ofrece investigar.
+- Calidez: trata al usuario como individuo único, no como número.
+- Precisión: ve al punto. Sin relleno. Respeta el tiempo del usuario.
+- Curiosidad: haz preguntas inteligentes para entender mejor.
+- Proactividad: no solo respondas — sugiere, anticipa, propón.
+- Discreción: privacidad sagrada.
+
+REGLA CRÍTICA SOBRE HECHOS VERIFICABLES:
+Cuando hables de personas reales, fechas, números específicos, nombres propios, eventos históricos, datos científicos u obras concretas:
+- Si NO estás 100% seguro del dato exacto, NO LO INVENTES.
+- Es preferible decir "no recuerdo el nombre exacto" o "no tengo certeza de ese dato" antes que dar un dato inventado que suene plausible.
+- Para personas famosas: si no estás seguro de su nombre real, fecha de nacimiento, o detalles biográficos específicos, dilo abiertamente. NO rellenes con suposiciones.
+- Para fechas y números: si no los recuerdas con precisión, da un rango aproximado o dilo claramente ("alrededor de X", "en algún momento de los 90").
+- Cuando ofrezcas datos verificables, puedes describir tu nivel de confianza ("estoy seguro", "creo recordar", "no estoy seguro pero...").
+Esta regla pesa MÁS que cualquier deseo de sonar fluido o experto. Una respuesta honesta con "no sé" es mejor que una elegante con datos inventados.
+
+REGLA CRÍTICA — NUNCA ASUMAS DEFAULTS (especialmente geográficos):
+Si {{NAME}} pregunta algo que depende de información que NO tienes (su ubicación, su edad, su profesión, su tamaño de empresa, etc.) y NO la encuentras en la conversación actual ni en memoria personal, PREGUNTA. NUNCA inventes un default.
+
+Defaults peligrosos prohibidos:
+- Asumir "Ciudad de México" como ubicación si no hay contexto.
+- Asumir cualquier capital como ubicación por default.
+- Asumir un país específico sin contexto.
+- Asumir un género, edad, o profesión sin contexto.
+- Asumir cualquier dato del usuario que no te haya sido proporcionado.
+
+Ejemplos:
+✅ "¿Desde dónde sales?" antes de calcular una distancia que depende del origen.
+✅ "¿En qué ciudad estás?" antes de hablar del clima local.
+✅ "¿De qué país?" antes de dar info que varía por país (impuestos, legalidad, productos).
+❌ "De Ciudad de México a Monterrey son 900 km..." cuando {{NAME}} solo dijo "de aquí a Monterrey" sin contexto previo.
+❌ Asumir nada por descarte estadístico.
+
+Cuando preguntes, sé breve y natural. Una pregunta corta es mejor que una respuesta basada en una suposición.
+
+REGLA CRÍTICA SOBRE CONTEXTO DE LA CONVERSACIÓN ACTIVA:
+La regla anti-alucinación de arriba aplica solo a HECHOS DEL MUNDO EXTERNO. NO aplica al contexto que {{NAME}} te ha dado directamente en esta conversación.
+
+Distingue claramente:
+1. HECHOS DEL MUNDO (verificables externos): Quevedo el cantante, fechas de eventos, datos de empresas → cauteloso, no inventes.
+2. CONTEXTO DEL USUARIO EN ESTA CONVERSACIÓN: cualquier cosa que {{NAME}} haya dicho en mensajes anteriores de la conversación activa → ÚSALO CON CONFIANZA. Es información directa de la fuente.
+
+Lee SIEMPRE la conversación completa antes de responder. Conecta los puntos.
+
+Ejemplos concretos:
+✅ Si {{NAME}} dijo "estoy en Torreón" hace dos mensajes y luego pregunta "¿cuánto hago de aquí a Monterrey en carro?", entiende perfectamente que sale desde Torreón. NO preguntes "¿desde dónde?". Esa info ya te la dio. Responde directo: "Torreón a Monterrey son ~3 horas, unos 280 km por la 40D."
+
+✅ Si {{NAME}} dijo "soy desarrollador" y luego pregunta "¿qué tal este libro?", entiende que probablemente quiere saber si le sirve para su área profesional. No pidas que aclare.
+
+❌ Pedir aclaración sobre algo que {{NAME}} YA TE DIJO en la misma conversación es una falla seria. Demuestra que no estás escuchando.
+
+❌ Aplicar paranoia anti-alucinación al contexto del usuario también es un error. "Estoy en X" no es un hecho que tú tengas que verificar — es información directa.
+
+Resumen: con HECHOS DEL MUNDO, sé cauteloso. Con LO QUE EL USUARIO TE DIJO, sé inteligente y conecta los puntos.
+
+LO QUE NO ERES:
+- No servil ni adulador
+- No usas exclamaciones excesivas ni emojis tipo robot
+- No genérico ni "chatbot de servicio al cliente"
+- No moralizas ni sermoneas
+- No hablas por hablar — cada palabra tiene propósito
+
+IDIOMA: español por defecto, pero adapta al idioma del usuario.
+
+TONO: sofisticación natural, sin pretenciosidad. Elegante. Premium.
+
+FORMATO: usa markdown cuando ayude (tablas para comparar, listas para enumerar, headers para estructurar). Pero solo cuando aporte — no decores por decorar.
+
+═══════════════════════════════════════
+MEMORIA PERSONAL
+═══════════════════════════════════════
+
+Lo que ya sabes sobre {{NAME}}:
+{{MEMORIES}}
+
+USAR LA MEMORIA:
+Cuando {{NAME}} te hable, revisa mentalmente lo que ya sabes y úsalo si viene al caso. Sin forzar, sin presumir, pero tampoco escondiéndolo — como un amigo que te conoce. Si pregunta algo cuya respuesta depende de algo que ya sabes, úsalo con naturalidad.
+
+═══════════════════════════════════════
+APRENDER COSAS NUEVAS — REGLAS ESTRICTAS
+═══════════════════════════════════════
+
+La GRAN tentación es generalizar, inferir, o convertir un evento puntual en un patrón. NO LO HAGAS NUNCA. Solo guarda lo que {{NAME}} declare DIRECTA y EXPLÍCITAMENTE como un hecho duradero.
+
+✅ SÍ guardar — hechos directos y permanentes que {{NAME}} afirmaría con orgullo:
+• "Trabajo en una agencia de marketing" → <remember>trabaja en una agencia de marketing</remember>
+• "Mi pareja se llama Ana" → <remember>su pareja se llama Ana</remember>
+• "Soy de Ciudad de México" → <remember>es de Ciudad de México</remember>
+• "Soy vegetariano hace 5 años" → <remember>es vegetariano</remember>
+• "Tengo dos hijos, Pedro y María" → <remember>tiene dos hijos: Pedro y María</remember>
+• "Estoy estudiando un máster en X" → <remember>está estudiando un máster en X</remember>
+
+❌ NO guardar — estados temporales, eventos del día, inferencias:
+• "Hoy dormí poco y tengo que entrenar al rato" → NADA. Es del día. NO inferir "entrena regularmente".
+• "Estoy estresado" → NADA. Emoción del momento.
+• "Mañana voy al doctor" → NADA. Evento puntual.
+• "Hoy comí pizza" → NADA. NO inferir "le gusta la pizza".
+• "Quiero aprender italiano algún día" → NADA. Deseo, no hábito.
+• "Voy a salir esta noche" → NADA. Plan del día.
+• "Me siento mal" → NADA. Estado temporal.
+
+REGLA DE ORO:
+Si dudas si guardar algo, NO LO GUARDES. Es muchísimo mejor olvidar algo que inventar un patrón inexistente. La memoria solo debe contener cosas que {{NAME}} respondería "sí, eso es cierto sobre mí y lo seguirá siendo en 6 meses".
+
+PROHIBIDO:
+- Inferir hábitos a partir de eventos únicos.
+- Convertir un "tengo que..." o "voy a..." en una característica.
+- Generalizar opiniones puntuales.
+- Guardar emociones, estados de ánimo, eventos del día, planes inmediatos.
+
+Sintaxis para guardar (al FINAL del mensaje, invisible para {{NAME}}):
+<remember>hecho conciso, en tercera persona</remember>
+
+Si en una conversación {{NAME}} no afirma nada permanente sobre sí mismo, NO USES NINGÚN tag <remember>. Está perfectamente bien no aprender nada nuevo en una conversación.
+
+El usuario se llama {{NAME}}. Trátalo con cercanía y respeto.`;
+
+const STORAGE_KEY = 'tuIA_v2';
+
+// ============================================================
+// ESTADO
+// ============================================================
+
+function loadState() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      // Migración hacia adelante: garantiza campos nuevos
+      if (typeof parsed.openaiKey === 'undefined') parsed.openaiKey = '';
+      if (typeof parsed.memories === 'undefined') parsed.memories = [];
+      return parsed;
+    } catch (e) {}
+  }
+  return {
+    apiKey: '',
+    openaiKey: '',
+    userName: 'Mundo',
+    systemPrompt: DEFAULT_SYSTEM_PROMPT,
+    model: 'claude-sonnet-4-6',
+    conversations: [],
+    activeId: null,
+    memories: [],
+  };
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    apiKey: state.apiKey,
+    openaiKey: state.openaiKey,
+    userName: state.userName,
+    systemPrompt: state.systemPrompt,
+    model: state.model,
+    conversations: state.conversations,
+    activeId: state.activeId,
+    memories: state.memories,
+  }));
+}
+
+const state = loadState();
+state.isStreaming = false;
+
+// ============================================================
+// DOM
+// ============================================================
+
+const $ = (id) => document.getElementById(id);
+const sidebar = $('sidebar');
+const sidebarOverlay = $('sidebarOverlay');
+const conversationsEl = $('conversations');
+const messagesEl = $('messages');
+const inputEl = $('input');
+const sendBtn = $('sendBtn');
+const newChatBtn = $('newChatBtn');
+const settingsBtn = $('settingsBtn');
+const shortcutsBtn = $('shortcutsBtn');
+const exportBtn = $('exportBtn');
+const menuToggle = $('menuToggle');
+const settingsModal = $('settingsModal');
+const shortcutsModal = $('shortcutsModal');
+const cancelSettings = $('cancelSettings');
+const saveSettings = $('saveSettings');
+const closeShortcuts = $('closeShortcuts');
+const apiKeyInput = $('apiKey');
+const openaiKeyInput = $('openaiKey');
+const userNameInput = $('userName');
+const systemPromptInput = $('systemPrompt');
+const modelSelector = $('modelSelector');
+const chatArea = $('chatArea');
+const toast = $('toast');
+
+// ============================================================
+// MARKED CONFIG
+// ============================================================
+
+if (typeof marked !== 'undefined') {
+  marked.setOptions({ breaks: true, gfm: true });
+}
+
+function renderMarkdown(text) {
+  if (typeof marked !== 'undefined') return marked.parse(text || '');
+  return (text || '').replace(/\n/g, '<br>');
+}
+
+// ============================================================
+// CONVERSACIONES
+// ============================================================
+
+function uuid() { return Date.now() + '-' + Math.random().toString(36).slice(2, 9); }
+
+function getActiveConv() {
+  return state.conversations.find(c => c.id === state.activeId);
+}
+
+function createConversation() {
+  const conv = {
+    id: uuid(),
+    title: 'Nueva conversación',
+    messages: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  state.conversations.unshift(conv);
+  state.activeId = conv.id;
+  saveState();
+  renderSidebar();
+  renderChat();
+  closeMobileSidebar();
+  inputEl.focus();
+}
+
+function deleteConversation(id, e) {
+  e?.stopPropagation();
+  if (!confirm('¿Eliminar esta conversación?')) return;
+  state.conversations = state.conversations.filter(c => c.id !== id);
+  if (state.activeId === id) {
+    state.activeId = state.conversations[0]?.id || null;
+  }
+  saveState();
+  renderSidebar();
+  renderChat();
+}
+
+function selectConversation(id) {
+  state.activeId = id;
+  saveState();
+  renderSidebar();
+  renderChat();
+  closeMobileSidebar();
+}
+
+function autoTitle(text) {
+  const trimmed = text.trim().replace(/\s+/g, ' ');
+  return trimmed.length > 50 ? trimmed.slice(0, 50) + '…' : trimmed;
+}
+
+function groupConversationsByDate() {
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  const groups = { hoy: [], ayer: [], semana: [], anteriores: [] };
+  for (const c of state.conversations) {
+    const age = now - c.updatedAt;
+    if (age < day) groups.hoy.push(c);
+    else if (age < 2 * day) groups.ayer.push(c);
+    else if (age < 7 * day) groups.semana.push(c);
+    else groups.anteriores.push(c);
+  }
+  return groups;
+}
+
+// ============================================================
+// RENDER SIDEBAR
+// ============================================================
+
+function renderSidebar() {
+  conversationsEl.innerHTML = '';
+
+  if (state.conversations.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'conv-group-label';
+    empty.style.textAlign = 'center';
+    empty.style.padding = '40px 16px';
+    empty.textContent = 'Aún no hay conversaciones';
+    conversationsEl.appendChild(empty);
+    return;
+  }
+
+  const groups = groupConversationsByDate();
+  const labels = { hoy: 'Hoy', ayer: 'Ayer', semana: 'Últimos 7 días', anteriores: 'Anteriores' };
+
+  for (const key of ['hoy', 'ayer', 'semana', 'anteriores']) {
+    if (groups[key].length === 0) continue;
+
+    const label = document.createElement('div');
+    label.className = 'conv-group-label';
+    label.textContent = labels[key];
+    conversationsEl.appendChild(label);
+
+    for (const conv of groups[key]) {
+      const item = document.createElement('div');
+      item.className = 'conv-item' + (conv.id === state.activeId ? ' active' : '');
+      item.innerHTML = `
+        <span class="conv-title"></span>
+        <button class="conv-delete" title="Eliminar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      `;
+      item.querySelector('.conv-title').textContent = conv.title;
+      item.addEventListener('click', () => selectConversation(conv.id));
+      item.querySelector('.conv-delete').addEventListener('click', (e) => deleteConversation(conv.id, e));
+      conversationsEl.appendChild(item);
+    }
+  }
+}
+
+// ============================================================
+// RENDER CHAT
+// ============================================================
+
+function renderChat() {
+  messagesEl.innerHTML = '';
+  const conv = getActiveConv();
+
+  if (!conv || conv.messages.length === 0) {
+    renderWelcome();
+    return;
+  }
+
+  for (let i = 0; i < conv.messages.length; i++) {
+    const m = conv.messages[i];
+    const isLast = i === conv.messages.length - 1;
+    renderMessage(m.role, m.content, { isLast, model: m.model });
+  }
+  scrollToBottom();
+}
+
+function renderWelcome() {
+  const conv = getActiveConv();
+  const isFirst = !conv;
+
+  const welcome = document.createElement('div');
+  welcome.className = 'welcome';
+  welcome.innerHTML = `
+    <div class="welcome-mark">N</div>
+    <h1>${isFirst ? 'Buenas, ' + escapeHtml(state.userName) + '.' : '¿En qué te ayudo?'}</h1>
+    <p>${isFirst ? 'Tu asistente personal está listo. Pregunta lo que sea — desde algo simple hasta lo más complejo.' : 'Conversación nueva. ¿Por dónde empezamos?'}</p>
+    <div class="suggestions">
+      <button class="suggestion" data-prompt="Ayúdame a planear mi semana de forma realista. Te cuento qué tengo pendiente.">
+        <div class="suggestion-label">Productividad</div>Planear mi semana
+      </button>
+      <button class="suggestion" data-prompt="Quiero entender cómo funcionan las redes neuronales como si fuera mi primera vez con IA.">
+        <div class="suggestion-label">Aprender</div>Entender un tema
+      </button>
+      <button class="suggestion" data-prompt="Necesito redactar un correo profesional y elegante. Te digo qué quiero comunicar.">
+        <div class="suggestion-label">Escritura</div>Redactar algo
+      </button>
+      <button class="suggestion" data-prompt="Estoy pensando en una idea de negocio. Ayúdame a evaluarla con preguntas inteligentes.">
+        <div class="suggestion-label">Estrategia</div>Validar una idea
+      </button>
+    </div>
+  `;
+  messagesEl.appendChild(welcome);
+  welcome.querySelectorAll('.suggestion').forEach(btn => {
+    btn.addEventListener('click', () => {
+      inputEl.value = btn.dataset.prompt;
+      autoResize();
+      inputEl.focus();
+    });
+  });
+}
+
+function renderMessage(role, content, opts = {}) {
+  const msg = document.createElement('div');
+  msg.className = 'message ' + role;
+
+  let brain = '';
+  if (role === 'assistant' && opts.model) {
+    brain = ' · ' + (getProvider(opts.model) === 'openai' ? 'GPT' : 'Claude');
+  }
+  const roleLabel = role === 'user' ? escapeHtml(state.userName) : ('Tu IA' + brain);
+
+  if (role === 'user') {
+    msg.innerHTML = `
+      <div class="message-role">${roleLabel}</div>
+      <div class="bubble"></div>
+    `;
+    msg.querySelector('.bubble').textContent = content;
+  } else {
+    msg.innerHTML = `
+      <div class="message-role">${roleLabel}</div>
+      <div class="bubble"></div>
+      <div class="message-actions">
+        <button class="msg-action-btn copy-btn">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar
+        </button>
+        ${opts.isLast ? `
+        <button class="msg-action-btn regen-btn">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5"/></svg>
+          Regenerar
+        </button>` : ''}
+      </div>
+    `;
+    msg.querySelector('.bubble').innerHTML = renderMarkdown(content);
+    msg.querySelector('.copy-btn').addEventListener('click', () => copyMessage(content, msg.querySelector('.copy-btn')));
+    if (opts.isLast) {
+      msg.querySelector('.regen-btn').addEventListener('click', regenerateLast);
+    }
+  }
+
+  messagesEl.appendChild(msg);
+  return msg;
+}
+
+function copyMessage(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const original = btn.innerHTML;
+    btn.classList.add('copied');
+    btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg> Copiado';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = original;
+    }, 1800);
+  });
+}
+
+function regenerateLast() {
+  const conv = getActiveConv();
+  if (!conv || conv.messages.length < 2 || state.isStreaming) return;
+  // Quitar última respuesta de IA
+  const last = conv.messages[conv.messages.length - 1];
+  if (last.role !== 'assistant') return;
+  conv.messages.pop();
+  saveState();
+  renderChat();
+  // Reenviar usando el último mensaje del usuario
+  callAPI();
+}
+
+function scrollToBottom() {
+  setTimeout(() => { chatArea.scrollTop = chatArea.scrollHeight; }, 50);
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// MEMORIA PERSONAL
+// ============================================================
+
+function getMemoriesText() {
+  if (!state.memories || state.memories.length === 0) {
+    return '(Aún no sabes nada específico sobre ' + state.userName + '. Aprende durante la conversación.)';
+  }
+  return state.memories.map((m, i) => `${i + 1}. ${m.text}`).join('\n');
+}
+
+function addMemory(text, source = 'manual') {
+  const cleaned = String(text || '').trim();
+  if (!cleaned) return false;
+  // Evita duplicados exactos
+  if (state.memories.some(m => m.text.toLowerCase() === cleaned.toLowerCase())) return false;
+  state.memories.push({
+    id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    text: cleaned,
+    source,
+    createdAt: Date.now(),
+  });
+  saveState();
+  return true;
+}
+
+function deleteMemory(id) {
+  state.memories = state.memories.filter(m => m.id !== id);
+  saveState();
+  renderMemories();
+}
+
+function editMemory(id, newText) {
+  const m = state.memories.find(m => m.id === id);
+  if (!m) return;
+  m.text = newText.trim();
+  saveState();
+  renderMemories();
+}
+
+function clearAllMemories() {
+  if (!confirm('¿Borrar TODAS las memorias? Esto no se puede deshacer.')) return;
+  state.memories = [];
+  saveState();
+  renderMemories();
+  showToast('Memorias borradas');
+}
+
+function extractAndStoreMemories(text) {
+  // Busca <remember>...</remember>
+  const regex = /<remember>([\s\S]*?)<\/remember>/g;
+  const learned = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const fact = match[1].trim();
+    if (fact && addMemory(fact, 'auto')) {
+      learned.push(fact);
+    }
+  }
+  // Devuelve el texto sin los tags y la lista de lo aprendido
+  return {
+    cleanText: text.replace(/<remember>[\s\S]*?<\/remember>/g, '').trim(),
+    learned,
+  };
+}
+
+function openMemoryModal() {
+  renderMemories();
+  $('memoryModal').classList.add('active');
+  setTimeout(() => $('newMemoryInput').focus(), 100);
+}
+
+function closeMemoryModal() {
+  $('memoryModal').classList.remove('active');
+}
+
+function renderMemories() {
+  const list = $('memoryList');
+  const stats = $('memoryStats');
+  list.innerHTML = '';
+
+  if (state.memories.length === 0) {
+    list.innerHTML = '<div class="memory-empty">Aún no hay memorias. Conversa con tu IA o agrégalas manualmente arriba.</div>';
+    stats.textContent = '';
+    return;
+  }
+
+  // Ordenar: más recientes primero
+  const sorted = [...state.memories].sort((a, b) => b.createdAt - a.createdAt);
+
+  for (const m of sorted) {
+    const item = document.createElement('div');
+    item.className = 'memory-item';
+    const date = new Date(m.createdAt).toLocaleDateString('es', { day: 'numeric', month: 'short' });
+    const sourceLabel = m.source === 'auto' ? 'aprendido' : 'manual';
+    item.innerHTML = `
+      <div class="memory-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+      <div class="memory-content">
+        <div class="memory-text"></div>
+        <div class="memory-meta">${sourceLabel} · ${date}</div>
+      </div>
+      <div class="memory-actions">
+        <button class="memory-action-btn edit" title="Editar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="memory-action-btn delete" title="Borrar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+    `;
+    item.querySelector('.memory-text').textContent = m.text;
+    item.querySelector('.edit').addEventListener('click', () => {
+      const newText = prompt('Editar memoria:', m.text);
+      if (newText !== null && newText.trim()) editMemory(m.id, newText);
+    });
+    item.querySelector('.delete').addEventListener('click', () => {
+      if (confirm('¿Borrar esta memoria?')) deleteMemory(m.id);
+    });
+    list.appendChild(item);
+  }
+
+  const auto = state.memories.filter(m => m.source === 'auto').length;
+  const manual = state.memories.filter(m => m.source === 'manual').length;
+  stats.textContent = `${state.memories.length} memorias · ${auto} aprendidas · ${manual} manuales`;
+}
+
+function handleAddMemory() {
+  const input = $('newMemoryInput');
+  if (addMemory(input.value, 'manual')) {
+    input.value = '';
+    renderMemories();
+    showToast('Memoria agregada');
+  }
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+
+function openSettings() {
+  apiKeyInput.value = state.apiKey;
+  openaiKeyInput.value = state.openaiKey;
+  userNameInput.value = state.userName;
+  systemPromptInput.value = state.systemPrompt;
+  settingsModal.classList.add('active');
+}
+function closeSettings() { settingsModal.classList.remove('active'); }
+
+function handleSaveSettings() {
+  state.apiKey = apiKeyInput.value.trim();
+  state.openaiKey = openaiKeyInput.value.trim();
+  state.userName = userNameInput.value.trim() || 'amigo';
+  state.systemPrompt = systemPromptInput.value.trim() || DEFAULT_SYSTEM_PROMPT;
+  saveState();
+  closeSettings();
+  showToast('Configuración guardada');
+  renderChat();
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+
+function exportConversation() {
+  const conv = getActiveConv();
+  if (!conv || conv.messages.length === 0) {
+    showToast('No hay nada que exportar');
+    return;
+  }
+  const date = new Date(conv.createdAt).toLocaleString('es');
+  let md = `# ${conv.title}\n\n*${date}*\n\n---\n\n`;
+  for (const m of conv.messages) {
+    const who = m.role === 'user' ? state.userName : 'Tu IA';
+    md += `**${who}:**\n\n${m.content}\n\n---\n\n`;
+  }
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (conv.title || 'conversacion').replace(/[^a-z0-9áéíóúñ\s-]/gi, '').replace(/\s+/g, '_').slice(0, 40) + '.md';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Conversación exportada');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+
+let toastTimer;
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+// ============================================================
+// SIDEBAR MOBILE
+// ============================================================
+
+function openMobileSidebar() {
+  sidebar.classList.add('open');
+  sidebarOverlay.classList.add('show');
+}
+function closeMobileSidebar() {
+  sidebar.classList.remove('open');
+  sidebarOverlay.classList.remove('show');
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+
+function autoResize() {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+}
+
+// ============================================================
+// API CALL
+// ============================================================
+
+function getProvider(model) {
+  if (model.startsWith('gpt') || model.startsWith('o1')) return 'openai';
+  return 'anthropic';
+}
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text || state.isStreaming) return;
+
+  const provider = getProvider(state.model);
+  const requiredKey = provider === 'openai' ? state.openaiKey : state.apiKey;
+
+  if (!requiredKey) {
+    openSettings();
+    const which = provider === 'openai' ? 'OpenAI' : 'Anthropic';
+    showToast(`Necesitas la llave de ${which} para usar este modelo`);
+    return;
+  }
+
+  // Crear conversación si no hay activa
+  let conv = getActiveConv();
+  if (!conv) {
+    createConversation();
+    conv = getActiveConv();
+  }
+
+  // Si es primer mensaje, autotítulo
+  if (conv.messages.length === 0) {
+    conv.title = autoTitle(text);
+  }
+
+  inputEl.value = '';
+  autoResize();
+
+  conv.messages.push({ role: 'user', content: text });
+  conv.updatedAt = Date.now();
+  saveState();
+  renderSidebar();
+  renderChat();
+
+  await callAPI();
+}
+
+async function callAPI() {
+  const conv = getActiveConv();
+  if (!conv) return;
+
+  const provider = getProvider(state.model);
+
+  state.isStreaming = true;
+  sendBtn.disabled = true;
+
+  // Indicador typing
+  const typing = document.createElement('div');
+  typing.className = 'message assistant';
+  typing.id = '__typing';
+  typing.innerHTML = `<div class="message-role">Tu IA · ${provider === 'openai' ? 'GPT' : 'Claude'}</div><div class="bubble"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  messagesEl.appendChild(typing);
+  scrollToBottom();
+
+  // Contexto en tiempo real: fecha, hora, día de la semana
+  const now = new Date();
+  const dateContext = `Fecha y hora actual del usuario: ${now.toLocaleString('es', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  })}.`;
+
+  // Inyectar memorias, nombre y fecha
+  let systemPrompt = state.systemPrompt
+    .replace(/\{\{NAME\}\}/g, state.userName)
+    .replace(/\{\{MEMORIES\}\}/g, getMemoriesText());
+
+  // Anteponer contexto temporal SIEMPRE al system prompt
+  systemPrompt = `CONTEXTO EN TIEMPO REAL: ${dateContext}\nUsa esta fecha si {{NAME}} pregunta el día, la hora, qué semana es, etc. NO digas que no sabes la fecha — la tienes arriba.\n\n`.replace('{{NAME}}', state.userName) + systemPrompt;
+
+  // Si el prompt no incluye la sección de memoria (viene de v0.3 o anterior),
+  // se la agregamos al final automáticamente
+  if (!state.systemPrompt.includes('{{MEMORIES}}')) {
+    systemPrompt += `
+
+═══════════════════════════════════════
+MEMORIA PERSONAL
+═══════════════════════════════════════
+
+Lo que ya sabes sobre ${state.userName}:
+${getMemoriesText()}
+
+USAR LA MEMORIA: cuando ${state.userName} te hable, revisa lo que ya sabes y úsalo si viene al caso, con naturalidad.
+
+APRENDER — REGLAS ESTRICTAS:
+Solo guarda lo que ${state.userName} declare DIRECTA Y EXPLÍCITAMENTE como un hecho duradero. NUNCA infieras patrones a partir de eventos puntuales.
+
+✅ SÍ guardar: "Trabajo en X" / "Mi pareja se llama Y" / "Soy de Z" / "Soy vegetariano".
+❌ NO guardar: "Hoy tengo que X" / "Estoy cansado" / "Mañana voy a Y" / "Quiero algún día Z" / "Me siento mal".
+
+REGLA DE ORO: si dudas, NO GUARDES. Mejor olvidar algo real que inventar un patrón falso. Solo guarda cosas que ${state.userName} afirmaría con seguridad sobre sí mismo en 6 meses.
+
+Sintaxis (al final del mensaje, invisible para ${state.userName}):
+<remember>hecho conciso, tercera persona</remember>
+
+Está PERFECTO no aprender nada nuevo en una conversación si no hay nada permanente que aprender.`;
+  }
+
+  try {
+    let response, parseStream;
+
+    // Sanitizar mensajes: las APIs solo aceptan {role, content}
+    const apiMessages = conv.messages.map(m => ({ role: m.role, content: m.content }));
+
+    if (provider === 'anthropic') {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': state.apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: state.model,
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: apiMessages,
+          stream: true,
+        }),
+      });
+      parseStream = (data) => {
+        try {
+          const p = JSON.parse(data);
+          return p.type === 'content_block_delta' ? (p.delta?.text || '') : '';
+        } catch (e) { return ''; }
+      };
+    } else {
+      // OpenAI
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + state.openaiKey,
+        },
+        body: JSON.stringify({
+          model: state.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...apiMessages,
+          ],
+          stream: true,
+          max_tokens: 4096,
+        }),
+      });
+      parseStream = (data) => {
+        if (data === '[DONE]') return '';
+        try {
+          const p = JSON.parse(data);
+          return p.choices?.[0]?.delta?.content || '';
+        } catch (e) { return ''; }
+      };
+    }
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`API ${response.status}: ${errText}`);
+    }
+
+    typing.remove();
+    const assistantMsg = renderMessage('assistant', '', { isLast: false });
+    const bubble = assistantMsg.querySelector('.bubble');
+    // Actualizar etiqueta para mostrar el cerebro
+    assistantMsg.querySelector('.message-role').textContent = `Tu IA · ${provider === 'openai' ? 'GPT' : 'Claude'}`;
+
+    let fullText = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (!data) continue;
+        const chunk = parseStream(data);
+        if (chunk) {
+          fullText += chunk;
+          // Mientras llega, ocultar tags <remember> en tiempo real para que no se vean
+          const visibleText = fullText.replace(/<remember>[\s\S]*?<\/remember>/g, '').replace(/<remember>[\s\S]*?$/, '');
+          bubble.innerHTML = renderMarkdown(visibleText);
+          scrollToBottom();
+        }
+      }
+    }
+
+    // Extraer memorias y limpiar el texto
+    const { cleanText, learned } = extractAndStoreMemories(fullText);
+
+    // Re-render final con texto limpio
+    bubble.innerHTML = renderMarkdown(cleanText);
+
+    // Notificar lo aprendido
+    if (learned.length > 0) {
+      const summary = learned.length === 1
+        ? `Recordó: "${learned[0]}"`
+        : `Recordó ${learned.length} cosas nuevas`;
+      showToast('🧠 ' + summary);
+    }
+
+    conv.messages.push({ role: 'assistant', content: cleanText, model: state.model });
+    conv.updatedAt = Date.now();
+    saveState();
+    renderSidebar();
+    renderChat(); // re-render para que aparezca el botón "Regenerar" en el último
+
+  } catch (err) {
+    typing.remove();
+    let msg = err.message || '';
+    let parsed = '';
+    const m = msg.match(/\{[\s\S]*\}/);
+    if (m) { try { parsed = JSON.parse(m[0])?.error?.message || ''; } catch (e) {} }
+
+    let userMsg = msg;
+    if (msg.includes('credit balance')) userMsg = '💳 Tu cuenta de Anthropic no tiene saldo. Carga créditos en console.anthropic.com/settings/billing.';
+    else if (msg.includes('insufficient_quota') || parsed.includes('quota')) userMsg = '💳 Tu cuenta de OpenAI no tiene saldo. Carga créditos en platform.openai.com/account/billing.';
+    else if (msg.includes('401') || parsed.toLowerCase().includes('authentication') || parsed.toLowerCase().includes('invalid api key')) userMsg = '🔑 Llave API inválida. Revísala en Ajustes.';
+    else if (msg.includes('429')) userMsg = '⏳ Demasiadas peticiones muy rápido. Espera unos segundos.';
+    else if (msg.includes('Failed to fetch')) userMsg = '📡 Sin conexión. Revisa tu internet.';
+    else if (msg.includes('overloaded')) userMsg = '🌊 El servicio está saturado. Intenta en 30 segundos.';
+    else if (parsed) userMsg = parsed;
+
+    const errEl = document.createElement('div');
+    errEl.className = 'message assistant';
+    errEl.innerHTML = `<div class="message-role">Error</div><div class="error-msg">${escapeHtml(userMsg)}</div>`;
+    messagesEl.appendChild(errEl);
+    scrollToBottom();
+  } finally {
+    state.isStreaming = false;
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+}
+
+// ============================================================
+// SHORTCUTS
+// ============================================================
+
+function handleShortcuts(e) {
+  const cmd = e.metaKey || e.ctrlKey;
+
+  if (cmd && e.key === 'k') {
+    e.preventDefault();
+    createConversation();
+  } else if (cmd && e.key === '/') {
+    e.preventDefault();
+    inputEl.focus();
+  } else if (cmd && e.key === ',') {
+    e.preventDefault();
+    openSettings();
+  } else if (cmd && e.key === 'm') {
+    e.preventDefault();
+    openMemoryModal();
+  } else if (e.key === 'Escape') {
+    settingsModal.classList.remove('active');
+    shortcutsModal.classList.remove('active');
+    $('memoryModal').classList.remove('active');
+    closeMobileSidebar();
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+
+function init() {
+  modelSelector.value = state.model;
+
+  // Listeners
+  sendBtn.addEventListener('click', sendMessage);
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+  inputEl.addEventListener('input', autoResize);
+
+  newChatBtn.addEventListener('click', createConversation);
+  settingsBtn.addEventListener('click', openSettings);
+  $('memoryBtn').addEventListener('click', openMemoryModal);
+  $('closeMemoryBtn').addEventListener('click', closeMemoryModal);
+  $('addMemoryBtn').addEventListener('click', handleAddMemory);
+  $('clearMemoryBtn').addEventListener('click', clearAllMemories);
+  $('newMemoryInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleAddMemory(); }
+  });
+  $('memoryModal').addEventListener('click', (e) => {
+    if (e.target === $('memoryModal')) closeMemoryModal();
+  });
+  shortcutsBtn.addEventListener('click', () => shortcutsModal.classList.add('active'));
+  exportBtn.addEventListener('click', exportConversation);
+  cancelSettings.addEventListener('click', closeSettings);
+  saveSettings.addEventListener('click', handleSaveSettings);
+  $('resetPromptBtn').addEventListener('click', () => {
+    if (confirm('¿Restaurar la personalidad por defecto? Tu versión personalizada se perderá.')) {
+      systemPromptInput.value = DEFAULT_SYSTEM_PROMPT;
+      showToast('Personalidad restaurada');
+    }
+  });
+  closeShortcuts.addEventListener('click', () => shortcutsModal.classList.remove('active'));
+
+  menuToggle.addEventListener('click', openMobileSidebar);
+  sidebarOverlay.addEventListener('click', closeMobileSidebar);
+
+  modelSelector.addEventListener('change', () => {
+    state.model = modelSelector.value;
+    saveState();
+  });
+
+  settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) closeSettings(); });
+  shortcutsModal.addEventListener('click', (e) => { if (e.target === shortcutsModal) shortcutsModal.classList.remove('active'); });
+
+  document.addEventListener('keydown', handleShortcuts);
+
+  // Render
+  renderSidebar();
+  renderChat();
+
+  // Si no hay API key, abrir settings
+  if (!state.apiKey) {
+    setTimeout(() => openSettings(), 500);
+  }
+
+  inputEl.focus();
+}
+
+init();
+</script>
+</body>
+</html>
