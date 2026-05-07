@@ -3,11 +3,20 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Tu IA — v0.4</title>
+<title>Mi IA Personal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script type="module">
+  // Supabase SDK — para auth y base de datos
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+  const SUPABASE_URL = 'https://cpfkhvsovrkoeoxbixpc.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwZmtodnNvdnJrb2VveGJpeHBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjY0ODAsImV4cCI6MjA5MzYwMjQ4MH0.q2KD46Iuzq4aBQGfp71yKZQdyIFZ9rpbuxdnqALLWQc';
+  window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // Aviso a la app que Supabase está listo
+  window.dispatchEvent(new Event('supabase-ready'));
+</script>
 <style>
   :root {
     --bg: #0d0d0d;
@@ -897,6 +906,223 @@
     margin-top: 4px;
   }
 
+  /* ============ AUTH SCREEN ============ */
+  .auth-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 40px 32px;
+    animation: slideUp 0.4s ease;
+  }
+
+  .auth-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  .auth-logo .logo-mark {
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
+    margin-bottom: 14px;
+  }
+
+  .auth-logo-text {
+    font-family: var(--display);
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  .auth-tagline {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  .auth-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 22px;
+  }
+
+  .auth-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 9px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: var(--body);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+  }
+
+  .auth-tab.active {
+    background: var(--surface-2);
+    color: var(--accent);
+  }
+
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .auth-form input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 13px 16px;
+    border-radius: 10px;
+    font-family: var(--body);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .auth-form input:focus { border-color: var(--accent); }
+
+  .auth-submit {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 13px 16px;
+    border-radius: 10px;
+    font-family: var(--body);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    margin-top: 4px;
+  }
+
+  .auth-submit:hover:not(:disabled) { background: var(--accent-hover); }
+  .auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .auth-message {
+    text-align: center;
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-top: 4px;
+    display: none;
+    line-height: 1.5;
+  }
+
+  .auth-message.error {
+    background: rgba(217, 112, 112, 0.1);
+    border: 1px solid var(--error);
+    color: var(--error);
+    display: block;
+  }
+
+  .auth-message.success {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    display: block;
+  }
+
+  .auth-footer {
+    margin-top: 22px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .auth-footer a { color: var(--accent); text-decoration: none; }
+
+  /* User block in sidebar */
+  .user-block {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .user-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .user-name {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .user-email {
+    color: var(--text-muted);
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .logout-btn:hover { color: var(--error); border-color: var(--error); }
+
   /* Toast */
   .toast {
     position: fixed;
@@ -956,6 +1182,33 @@
 </head>
 <body>
 
+<!-- AUTH SCREEN (se oculta cuando hay sesión) -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-mark">N</div>
+      <div class="auth-logo-text">Mi IA Personal</div>
+      <div class="auth-tagline">Asistente premium con memoria personal</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" data-mode="login">Iniciar sesión</button>
+      <button class="auth-tab" id="tabSignup" data-mode="signup">Crear cuenta</button>
+    </div>
+
+    <form class="auth-form" id="authForm">
+      <input type="email" id="authEmail" placeholder="Correo electrónico" required autocomplete="email" />
+      <input type="password" id="authPassword" placeholder="Contraseña (mín. 6 caracteres)" required autocomplete="current-password" minlength="6" />
+      <button type="submit" class="auth-submit" id="authSubmit">Iniciar sesión</button>
+      <div class="auth-message" id="authMessage"></div>
+    </form>
+
+    <div class="auth-footer">
+      Tus datos se guardan de forma segura.<br>Solo tú accedes a tu cuenta.
+    </div>
+  </div>
+</div>
+
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
@@ -965,6 +1218,17 @@
     </button>
   </div>
   <div class="conversations" id="conversations"></div>
+  <div class="user-block" id="userBlock">
+    <div class="user-avatar" id="userAvatar">M</div>
+    <div class="user-info">
+      <div class="user-name" id="userName">Mundo</div>
+      <div class="user-email" id="userEmail"></div>
+    </div>
+    <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+    </button>
+  </div>
+
   <div class="sidebar-footer">
     <button class="sidebar-btn sidebar-btn-primary" id="memoryBtn" title="Memorias (⌘M)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1M5.6 5.6l.7.7M3 12h1M19.4 5.6l-.7.7M21 12h-1M12 7a5 5 0 0 0-3 9c.5.5 1 1 1 2v1h4v-1c0-1 .5-1.5 1-2a5 5 0 0 0-3-9z"/></svg>
@@ -996,7 +1260,7 @@
         <div class="logo-mark">N</div>
         <div>
           <div class="logo-text">Tu IA</div>
-          <div class="logo-version">PROTOTIPO V0.4</div>
+          <div class="logo-version">V0.5 · CON CUENTAS</div>
         </div>
       </div>
     </div>
@@ -1273,7 +1537,9 @@ Si en una conversación {{NAME}} no afirma nada permanente sobre sí mismo, NO U
 
 El usuario se llama {{NAME}}. Trátalo con cercanía y respeto.`;
 
-const STORAGE_KEY = 'tuIA_v2';
+// Storage key se establece dinámicamente al hacer login
+let STORAGE_KEY = 'tuIA_anonymous';
+let currentUser = null; // Se llena cuando hay sesión Supabase activa
 
 // ============================================================
 // ESTADO
@@ -1315,8 +1581,7 @@ function saveState() {
   }));
 }
 
-const state = loadState();
-state.isStreaming = false;
+// state se inicializa al hacer login en bootApp(). Antes de eso es null.
 
 // ============================================================
 // DOM
@@ -1601,6 +1866,97 @@ function scrollToBottom() {
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// AUTENTICACIÓN (SUPABASE)
+// ============================================================
+
+let authMode = 'login'; // 'login' o 'signup'
+
+function setAuthMode(mode) {
+  authMode = mode;
+  $('tabLogin').classList.toggle('active', mode === 'login');
+  $('tabSignup').classList.toggle('active', mode === 'signup');
+  $('authSubmit').textContent = mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta';
+  $('authPassword').setAttribute('autocomplete', mode === 'login' ? 'current-password' : 'new-password');
+  hideAuthMessage();
+}
+
+function showAuthMessage(text, type = 'error') {
+  const el = $('authMessage');
+  el.textContent = text;
+  el.className = 'auth-message ' + type;
+}
+
+function hideAuthMessage() {
+  const el = $('authMessage');
+  el.className = 'auth-message';
+  el.textContent = '';
+}
+
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+  const email = $('authEmail').value.trim();
+  const password = $('authPassword').value;
+  const submitBtn = $('authSubmit');
+  submitBtn.disabled = true;
+  hideAuthMessage();
+
+  try {
+    if (authMode === 'signup') {
+      const { data, error } = await window.supabase.auth.signUp({ email, password });
+      if (error) throw error;
+      // Si Supabase requiere confirmación de correo
+      if (data.user && !data.session) {
+        showAuthMessage('Cuenta creada. Revisa tu correo para confirmar antes de iniciar sesión.', 'success');
+        setAuthMode('login');
+      } else {
+        showAuthMessage('Bienvenido. Iniciando...', 'success');
+      }
+    } else {
+      const { error } = await window.supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      // El listener onAuthStateChange se encarga del resto
+    }
+  } catch (err) {
+    let msg = err.message || 'Error inesperado';
+    if (msg.includes('Invalid login credentials')) msg = 'Correo o contraseña incorrectos.';
+    else if (msg.includes('Email not confirmed')) msg = 'Confirma tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.';
+    else if (msg.includes('User already registered')) msg = 'Ya existe una cuenta con ese correo. Inicia sesión.';
+    else if (msg.includes('Password should be')) msg = 'La contraseña debe tener al menos 6 caracteres.';
+    showAuthMessage(msg, 'error');
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+async function handleLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  await window.supabase.auth.signOut();
+  // El listener onAuthStateChange se encarga del resto
+}
+
+function showAuthScreen() {
+  $('authScreen').style.display = 'flex';
+  // Limpiar formulario
+  $('authEmail').value = '';
+  $('authPassword').value = '';
+  hideAuthMessage();
+  setTimeout(() => $('authEmail').focus(), 100);
+}
+
+function hideAuthScreen() {
+  $('authScreen').style.display = 'none';
+}
+
+function updateUserBlock() {
+  if (!currentUser) return;
+  const email = currentUser.email || '';
+  const displayName = state.userName || email.split('@')[0] || 'Usuario';
+  $('userName').textContent = displayName;
+  $('userEmail').textContent = email;
+  $('userAvatar').textContent = (displayName[0] || 'U').toUpperCase();
 }
 
 // ============================================================
@@ -2109,8 +2465,51 @@ function handleShortcuts(e) {
 // INIT
 // ============================================================
 
-function init() {
+// state global — se inicializa después del login
+let state = null;
+
+function bootApp(user) {
+  // Re-inicializar state con el storage key del usuario
+  STORAGE_KEY = 'tuIA_v2_user_' + user.id;
+  currentUser = user;
+  state = loadState();
+  state.isStreaming = false;
+
+  // Si el usuario nunca puso un nombre, usar la parte antes del @ del correo
+  if (!state.userName || state.userName === 'Mundo') {
+    state.userName = user.user_metadata?.name || user.email.split('@')[0] || 'Usuario';
+    saveState();
+  }
+
+  hideAuthScreen();
+  updateUserBlock();
   modelSelector.value = state.model;
+  renderSidebar();
+  renderChat();
+
+  // Si no hay API key, abrir settings
+  if (!state.apiKey && !state.openaiKey) {
+    setTimeout(() => openSettings(), 500);
+  }
+
+  inputEl.focus();
+}
+
+async function checkSession() {
+  const { data: { session } } = await window.supabase.auth.getSession();
+  if (session?.user) {
+    bootApp(session.user);
+  } else {
+    showAuthScreen();
+  }
+}
+
+function init() {
+  // Listeners de auth
+  $('tabLogin').addEventListener('click', () => setAuthMode('login'));
+  $('tabSignup').addEventListener('click', () => setAuthMode('signup'));
+  $('authForm').addEventListener('submit', handleAuthSubmit);
+  $('logoutBtn').addEventListener('click', handleLogout);
 
   // Listeners
   sendBtn.addEventListener('click', sendMessage);
@@ -2159,19 +2558,30 @@ function init() {
 
   document.addEventListener('keydown', handleShortcuts);
 
-  // Render
-  renderSidebar();
-  renderChat();
+  // Listener global de cambios de sesión (login, logout, etc.)
+  window.supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      bootApp(session.user);
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      state = null;
+      // Limpiar UI
+      messagesEl.innerHTML = '';
+      $('conversations').innerHTML = '';
+      showAuthScreen();
+    }
+  });
 
-  // Si no hay API key, abrir settings
-  if (!state.apiKey) {
-    setTimeout(() => openSettings(), 500);
-  }
-
-  inputEl.focus();
+  // Verificar si ya hay sesión activa
+  checkSession();
 }
 
-init();
+// Esperar a que Supabase esté listo antes de iniciar
+if (window.supabase) {
+  init();
+} else {
+  window.addEventListener('supabase-ready', init, { once: true });
+}
 </script>
 </body>
 </html>
